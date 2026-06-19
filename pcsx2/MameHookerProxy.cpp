@@ -121,10 +121,11 @@ void MameHookerProxy::Gunshot(int gunIndex)
 {
   std::string message = "1";
   
+
+ // Console.WriteLn("RECOIL: MameHookerProxy GUN %d : SHOT", gunIndex + 1);
+
   if (!pipeConnected || !active)
     return;
-
-  
  
   if (gunIndex == 0)
   {
@@ -240,8 +241,8 @@ void MameHookerProxy::StartGame(std::string id)
   std::string arguments =
       "gamename=\"" + id +
       "\" "
-  //    "outputs=\"GunRecoil_P1,GunRecoil_P2\"";
-	  "outputs=\"GunRecoil_P1\"";
+      "outputs=\"GunRecoil_P1,GunRecoil_P2\"";
+	//  "outputs=\"GunRecoil_P1\"";
 
   std::string commandLine = std::string(programPath) + " " + std::string(arguments);
 
