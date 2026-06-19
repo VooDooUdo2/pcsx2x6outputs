@@ -344,7 +344,15 @@ std::string VMManager::GetDiscPath()
 std::string VMManager::GetDiscSerial()
 {
 	std::unique_lock lock(s_info_mutex);
-	return s_disc_serial;
+	if (ACJV::GetGameId().empty())
+	{
+		return s_disc_serial;
+	}
+	else
+	{
+		return ACJV::GetGameId();
+	}
+	
 }
 
 std::string VMManager::GetDiscELF()

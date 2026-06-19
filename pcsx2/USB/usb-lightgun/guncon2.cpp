@@ -19,6 +19,9 @@
 #include "common/StringUtil.h"
 
 #include <tuple>
+#include <windows.h>
+#include "Memory.h"
+#include "MameHookerProxy.h"
 
 namespace usb_lightgun
 {
@@ -120,6 +123,10 @@ namespace usb_lightgun
 	{
 		explicit GunCon2State(u32 port_);
 
+		
+		~GunCon2State();
+		void SetTrigggerState(bool on);
+
 		USBDevice dev{};
 		USBDesc desc{};
 		USBDescDevice desc_dev{};
@@ -159,6 +166,28 @@ namespace usb_lightgun
 		s16 calibration_pos_y = 0;
 
 		bool auto_config_done = false;
+
+		int recoilPoolSpeed = 10;
+		void threadOutputs();
+		std::thread* myThread = nullptr;
+		std::string active_game = "";
+		bool triggerIsActive = false;
+		std::chrono::microseconds::rep triggerLastPress = 0;
+		std::chrono::microseconds::rep triggerLastRelease = 0;
+		std::chrono::microseconds::rep lastGunShot = 0;
+		std::chrono::microseconds::rep nextGunShot = 0;
+		int queueSizeGunshot = 0;
+		long fullAutoDelay = 0;
+		long multishotDelay = 0;
+		int lastAmmo = INT32_MAX;
+		int lastWeapon = 0;
+		int lastCharged = 0;
+		int lastOther1 = 0;
+		int lastOther2 = 0;
+		bool fullAutoActive = false;
+		float m_gun4irComPort = 0;
+		int gun4irComPort = 0;
+		HANDLE serialPort;
 
 		void AutoConfigure();
 
@@ -356,31 +385,130 @@ namespace usb_lightgun
 	GunCon2State::GunCon2State(u32 port_)
 		: port(port_)
 	{
+		Console.WriteLn("NIXX : GunCon2State -> Create GunConState %d", port_);
+
+		const std::string serial = VMManager::GetDiscSerial();
+
+		Console.WriteLn("NIXX : GunCon2State -> Start GunCon %d for %s", port, serial);
+
+		if (active_game == "" && serial != "")
+		{
+			active_game = serial;
+			myThread = new std::thread(&GunCon2State::threadOutputs, this);
+		}
+	}
+
+	GunCon2State::~GunCon2State()
+	{
+		active_game = "";
+	}
+
+	void GunCon2State::SetTrigggerState(bool on)
+	{
+		if (on)
+		{
+			triggerIsActive = true;
+			triggerLastPress =
+				std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch())
+					.count();
+		}
+		else
+		{
+			triggerIsActive = false;
+			triggerLastRelease =
+				std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch())
+					.count();
+		}
+	}
+
+	void GunCon2State::threadOutputs()
+	{
+		Console.WriteLn("THREAD : Thread Start");
+		Console.WriteLn("COKRAY : ACTIVE GAME %s", active_game);
+		//while (VMManager::HasValidVM() && active_game != "")
+		while (active_game != "")
+		{
+			std::chrono::microseconds::rep timestamp =
+				std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch())
+					.count();
+			std::string output_signal = "";
+
+			if (active_game == "NM00021") // Cobra Arcade
+			{
+				bool valid_query = false;
+				u32 ammoCount = 0;
+				if (port == 0)
+				{
+					valid_query = true;
+					ammoCount = memRead32(0x59AE98);
+				}
+				//if (port == 1)
+				//{
+				//	valid_query = true;
+				//	ammoCount = memRead32(0x1EF51E4);
+				//	weaponType = memRead32(0x19A6830); 
+				//}
+				if (valid_query)
+				{
+					if (ammoCount < lastAmmo && triggerIsActive)
+					{
+						output_signal = "gunshot";
+					}
+					lastAmmo = ammoCount;
+				}
+			}
+
+			if (output_signal != "")
+			{
+				if (port == 0)
+				{
+					Console.WriteLn("GUN A : %s", output_signal.c_str());
+					MameHookerProxy::GetInstance().Gunshot(port);
+				}
+				if (port == 1)
+				{
+					Console.WriteLn("GUN B : %s", output_signal.c_str());
+				}
+			}
+
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		}
+		Console.WriteLn("THREAD : Thread stop");
 	}
 
 	void GunCon2State::AutoConfigure()
 	{
-		const std::string serial = VMManager::GetDiscSerial();
-		for (const GameConfig& gc : s_game_config)
-		{
-			if (serial != gc.serial)
-				continue;
+		//const std::string serial = VMManager::GetDiscSerial();
 
-			Console.WriteLn(fmt::format("(GunCon2) Using automatic config for '{}'", serial));
-			Console.WriteLn(fmt::format("  Scale: {}x{}", gc.scale_x / 100.0f, gc.scale_y / 100.0f));
-			Console.WriteLn(fmt::format("  Center Position: {}x{}", gc.center_x, gc.center_y));
-			Console.WriteLn(fmt::format("  Screen Size: {}x{}", gc.screen_width, gc.screen_height));
+		//Console.WriteLn("NIXX : GunCon2State -> Start GunCon %d for %s", port, serial);
 
-			scale_x = gc.scale_x / 100.0f;
-			scale_y = gc.scale_y / 100.0f;
-			center_x = static_cast<float>(gc.center_x);
-			center_y = static_cast<float>(gc.center_y);
-			screen_width = gc.screen_width;
-			screen_height = gc.screen_height;
-			return;
-		}
+		//if (active_game == "" && serial != "")
+		//{
+		//	active_game = serial;
+		//	myThread = new std::thread(&GunCon2State::threadOutputs, this);
+		//}
 
-		Console.Warning(fmt::format("(GunCon2) No automatic config found for '{}'.", serial));
+
+		//for (const GameConfig& gc : s_game_config)
+		//{
+		//	if (serial != gc.serial)
+		//		continue;
+
+		//	Console.WriteLn(fmt::format("(GunCon2) Using automatic config for '{}'", serial));
+		//	Console.WriteLn(fmt::format("  Scale: {}x{}", gc.scale_x / 100.0f, gc.scale_y / 100.0f));
+		//	Console.WriteLn(fmt::format("  Center Position: {}x{}", gc.center_x, gc.center_y));
+		//	Console.WriteLn(fmt::format("  Screen Size: {}x{}", gc.screen_width, gc.screen_height));
+
+		//	scale_x = gc.scale_x / 100.0f;
+		//	scale_y = gc.scale_y / 100.0f;
+		//	center_x = static_cast<float>(gc.center_x);
+		//	center_y = static_cast<float>(gc.center_y);
+		//	screen_width = gc.screen_width;
+		//	screen_height = gc.screen_height;
+		//	return;
+		//}
+
+		//Console.Warning(fmt::format("(GunCon2) No automatic config found for '{}'.", serial));
 	}
 
 	std::tuple<s16, s16> GunCon2State::CalculatePosition()
@@ -470,6 +598,12 @@ namespace usb_lightgun
 
 	USBDevice* GunCon2Device::CreateDevice(SettingsInterface& si, u32 port, u32 subtype) const
 	{
+
+		Console.WriteLn("COKRAY : Here????");
+
+
+
+
 		GunCon2State* s = new GunCon2State(port);
 		s->desc.full = &s->desc_dev;
 		s->desc.str = desc_strings;
@@ -573,6 +707,11 @@ namespace usb_lightgun
 	void GunCon2Device::SetBindingValue(USBDevice* dev, u32 bind_index, float value) const
 	{
 		GunCon2State* s = USB_CONTAINER_OF(dev, GunCon2State, dev);
+
+		if (bind_index == BID_TRIGGER)
+		{
+			s->SetTrigggerState((value >= 0.5f));
+		}
 
 		if (bind_index < BID_RELATIVE_LEFT)
 		{
