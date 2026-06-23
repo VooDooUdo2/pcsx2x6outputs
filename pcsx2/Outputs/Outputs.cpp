@@ -27,7 +27,7 @@ EOutputs COutputs::GetOutputByName(const char *name)
 {
 	for (unsigned i = 0; i < NUM_OUTPUTS; i++)
 	{
-		if (stricmp(name, s_outputNames[i]) == 0)
+		if (strcmp(name, s_outputNames[i]) == 0)
 			return (EOutputs)i;
 	}
 	return OutputUnknown;

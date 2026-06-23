@@ -45,11 +45,10 @@ CWinOutputs::~CWinOutputs()
 
 bool CWinOutputs::Initialize()
 {
-	Console.WriteLn("Initializing outputs");
 	// Create window class
 	if (!CreateWindowClass())
 	{
-		Console.WriteLn("Unable to register window class for Windows outputs");
+		Console.WriteLn("OUTPUTS: Unable to register window class for Windows outputs");
 		return false;
 	}
 	
@@ -66,7 +65,7 @@ bool CWinOutputs::Initialize()
 							NULL);
 	if (!m_hwnd)
 	{
-		Console.WriteLn("Unable to create window handle for Windows outputs");
+		Console.WriteLn("OUTPUTS: Unable to create window handle for Windows outputs");
 		return false;
 	}
 
@@ -86,7 +85,7 @@ bool CWinOutputs::Initialize()
 void CWinOutputs::Attached()
 {
 	// Broadcast a startup message
-	Console.WriteLn("Outputs attached, broadcasting start message");
+	Console.WriteLn("OUTPUTS: Outputs attached, broadcasting start message");
 	PostMessage(HWND_BROADCAST, m_onStart, (WPARAM)m_hwnd, 0);
 }
 
@@ -147,7 +146,7 @@ bool CWinOutputs::AllocateMessageId(UINT &regId, LPCTSTR str)
 	regId = RegisterWindowMessage(str);
 	if (regId != 0)
 		return true;
-	Console.WriteLn("Unable to register window message '%s' for Windows outputs", str);
+	Console.WriteLn("OUTPUTS: Unable to register window message '%s' for Windows outputs", str);
 	return false;
 }
 

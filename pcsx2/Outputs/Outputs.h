@@ -12,7 +12,10 @@
 #define INCLUDED_OUTPUTS_H
 
 #include "Types.h"
+
 #include <cstring>
+
+
 
 /*
  * EOutputs enumeration of all available outputs.

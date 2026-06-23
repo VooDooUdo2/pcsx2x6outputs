@@ -545,15 +545,17 @@ void ACJV::SetMode(JVS_MODE mode)
 
 		#ifdef _WIN32
 		// start recoil output server (currently using only Windows implementation, NetOutputs TODO)
+		Console.WriteLn("OUTPUTS: using Windows outputs.");
 		Outputs = new CWinOutputs(); 
 		#endif
 
 		// Initialize outputs
 		if (Outputs)
 		{
+			Console.WriteLn("OUTPUTS: initialize outputs.");
 			if (Outputs != NULL && !Outputs->Initialize())
 			{
-				Console.WriteLn("Unable to initialize outputs.");
+				Console.WriteLn("OUTPUTS: Unable to initialize outputs.");
 			}
 			else
 			{
@@ -562,7 +564,7 @@ void ACJV::SetMode(JVS_MODE mode)
 
 				if (s_gameid == "NM00021" || s_gameid == "NM00003")
 				{
-					Console.WriteLn("RECOIL : Detected Cobra or Vampire, enabling memory-based recoil thread");
+					Console.WriteLn("OUTPUTS: Detected Cobra or Vampire, enabling memory-based recoil thread");
 					memoryRecoilThread = new std::thread(ACJV::threadMemoryOutputs);
 				}
 			}
@@ -1207,7 +1209,7 @@ void ACJV::UpdateFcaFrame()
 	
 void ACJV::threadMemoryOutputs() 
 {
-	Console.WriteLn("RECOIL : ACJV Recoil Thread Start %s", s_gameid);
+	Console.WriteLn("OUTPUTS: ACJV Recoil Thread Start %s", s_gameid);
 
 	while (s_gameid != "")
 	{
@@ -1267,7 +1269,5 @@ void ACJV::threadMemoryOutputs()
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(15));
 	}
-
-	Console.WriteLn("RECOIL : Recoil Thread stop");
-
+	Console.WriteLn("OUTPUTS: Recoil Thread stop");
 }
