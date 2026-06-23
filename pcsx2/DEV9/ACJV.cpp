@@ -12,7 +12,9 @@
 #include <atomic>
 #include <string>
 #include <Outputs/Outputs.h>
+#ifdef _WIN32
 #include <Outputs/WinOutputs.h>
+#endif
 
 #include "Memory.h"
 #include "VMManager.h"
