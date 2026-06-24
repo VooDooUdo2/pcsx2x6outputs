@@ -13,7 +13,7 @@
 
 #include "Types.h"
 
-#include <cstring>
+#include <string>
 
 
 
