@@ -18,6 +18,8 @@
 
 #include "Memory.h"
 #include "VMManager.h"
+#include <thread>
+#include <chrono>
 
 
 enum ACJVCMD {
@@ -1209,7 +1211,7 @@ void ACJV::UpdateFcaFrame()
 	
 void ACJV::threadMemoryOutputs() 
 {
-	Console.WriteLn("OUTPUTS: ACJV Recoil Thread Start %s", s_gameid);
+	Console.WriteLn("OUTPUTS: ACJV Recoil Thread Start");
 
 	while (s_gameid != "")
 	{
