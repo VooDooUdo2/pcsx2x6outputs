@@ -14,6 +14,7 @@
 #include "Types.h"
 
 #include <string>
+#include <cstring>
 
 
 
