@@ -191,6 +191,10 @@ namespace ACJV {
     bool IsSindenBorderEnabled();
     int GetSindenBorderMode();
     int GetSindenBorderThickness();
+
+    bool IsOutputsEnabled();
+	
+	void threadMemoryOutputs();
 }
 
 

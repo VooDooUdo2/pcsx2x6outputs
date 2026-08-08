@@ -12,6 +12,16 @@
 #include <array>
 #include <atomic>
 #include <string>
+#include <Outputs/Outputs.h>
+#ifdef _WIN32
+#include <Outputs/WinOutputs.h>
+#endif
+
+#include "Memory.h"
+#include "VMManager.h"
+#include <thread>
+#include <chrono>
+
 
 enum ACJVCMD {
 	UNKNOWN = -2, // unknown CMD, should fire up a warning for developer
@@ -72,6 +82,15 @@ static std::atomic<int> s_sinden_border_mode{0};
 static std::atomic<int> s_sinden_border_thickness{10};
 static std::atomic<bool> s_lightgun_link_2p{false};
 static std::string s_gameid;
+
+static std::atomic<bool> s_outputs_enabled{false};
+static int s_last_recoil = 0;
+static u32 s_p1LastAmmo = 0; //INT32_MAX;
+static u32 s_p2LastAmmo = 0; //INT32_MAX;
+static bool s_p1RecoilHigh = false;
+static bool s_p2RecoilHigh = false;
+std::thread* memoryRecoilThread = nullptr;
+COutputs* Outputs = nullptr;
 
 std::span<const ACJV::DIPSwitchInfo> ACJV::GetDIPSwitches()
 {
@@ -250,6 +269,7 @@ void ACJV::LoadConfig(const SettingsInterface& si)
 	s_sinden_border_mode = si.GetIntValue(CONFIG_SECTION, "SindenBorderMode", 0);
 	s_sinden_border_thickness = si.GetIntValue(CONFIG_SECTION, "SindenBorderThickness", 10);
 	s_lightgun_link_2p = si.GetBoolValue(CONFIG_SECTION, "LightgunLinkAs2P", false);
+	s_outputs_enabled = si.GetBoolValue(CONFIG_SECTION, "OutputsEnabled", false);
 }
 
 void ACJV::CopyConfiguration(SettingsInterface* dest_si, const SettingsInterface& src_si, bool copy_settings, bool copy_bindings)
@@ -267,6 +287,7 @@ void ACJV::CopyConfiguration(SettingsInterface* dest_si, const SettingsInterface
 		dest_si->CopyFloatValue(src_si, CONFIG_SECTION, "TriggerDeadzone");
 		dest_si->CopyBoolValue(src_si, CONFIG_SECTION, "InvertSteering");
 		dest_si->CopyBoolValue(src_si, CONFIG_SECTION, "LightgunLinkAs2P");
+		dest_si->CopyBoolValue(src_si, CONFIG_SECTION, "OutputsEnabled");
 	}
 
 	if (copy_bindings)
@@ -328,6 +349,7 @@ void ACJV::SetDefaultConfiguration(SettingsInterface& si)
 	si.SetBoolValue(CONFIG_SECTION, "SindenBorderEnabled", false);
 	si.SetIntValue(CONFIG_SECTION, "SindenBorderMode", 0);
 	si.SetIntValue(CONFIG_SECTION, "SindenBorderThickness", 10);
+	si.SetBoolValue(CONFIG_SECTION, "OutputsEnabled", false);
 }
 
 // The game reading the JVS board: return the requested word from its read buffer (rdbuf).
@@ -554,6 +576,50 @@ void ACJV::InsertCoin(u32 slot)
 void ACJV::SetMode(JVS_MODE mode)
 {
 	m_jvsMode = mode;
+	
+	if (m_jvsMode == JVS_MODE::LIGHTGUN)
+	{
+		// Initialize outputs for Lightgun Games
+
+		#ifdef _WIN32
+		// start recoil output server (currently using only Windows implementation, NetOutputs TODO)
+
+		if (ACJV::IsOutputsEnabled())
+		{
+			Console.WriteLn("OUTPUTS: Outputs enabled, starting Windows outputs.");
+			Outputs = new CWinOutputs();
+		}
+		else
+		{
+			Console.WriteLn("OUTPUTS: Outputs disabled.");
+			Outputs = nullptr;
+		}
+		#endif
+
+		// Initialize outputs
+		if (Outputs)
+		{
+			Console.WriteLn("OUTPUTS: initialize outputs.");
+			if (Outputs != NULL && !Outputs->Initialize())
+			{
+				Console.WriteLn("OUTPUTS: Unable to initialize outputs.");
+			}
+			else
+			{
+				Outputs->SetGame(s_gameid);
+				Outputs->Attached();
+
+				if (s_gameid == "NM00021" || s_gameid == "NM00003")
+				{
+					Console.WriteLn("OUTPUTS: Detected Cobra or Vampire, enabling memory-based recoil thread");
+					memoryRecoilThread = new std::thread(ACJV::threadMemoryOutputs);
+				}
+			}
+		}
+
+
+	
+	}
 }
 
 void ACJV::SetWheelAxis(u32 axis, float value)
@@ -601,6 +667,11 @@ int ACJV::GetSindenBorderMode()
 int ACJV::GetSindenBorderThickness()
 {
 	return s_sinden_border_thickness;
+}
+
+bool ACJV::IsOutputsEnabled()
+{
+	return s_outputs_enabled;
 }
 
 void ACJV::SetScreenPos(u16 x, u16 y)
@@ -1242,7 +1313,15 @@ void do_jvs_packet(const u8* input, u8* output) {
 				if(i == 1)
 				{
 					int p1Recoil = (gpvalue >= 0x50) ? 1 : 0;
-					(void)p1Recoil;
+					
+					// GPIO recoil seems to only be used by TC3 and TC4, but other games may set gpvalue for other purposes, so check game ID and recoil bit before triggering
+					if ( (p1Recoil != s_last_recoil) && (s_gameid == "NM00012" || s_gameid == "NM00032"))
+					{
+						if (Outputs) 
+							Outputs->SetValue(P1_Recoil, p1Recoil);
+
+						s_last_recoil = p1Recoil;
+					}
 				}
 			}
 
@@ -1400,4 +1479,78 @@ void ACJV::UpdateFcaFrame()
 
 	// COIN: FCA-1 coin counter @rdbuf[0xc0]; RRV credits on increase (FUN_0022aa88). Mirror our coin count.
 	rdbuf[0xc0] = (u8)ACJV::coin[0];
+}
+	
+void ACJV::threadMemoryOutputs() 
+{
+	Console.WriteLn("OUTPUTS: ACJV Recoil Thread Start");
+
+	while (s_gameid != "")
+	{
+		if (VMManager::GetState() == VMState::Running)
+		{
+			if (s_p1RecoilHigh)
+			{
+				Outputs->SetValue(P1_Recoil, 0);
+				s_p1RecoilHigh = false;
+			}
+			else if (s_p2RecoilHigh)
+			{
+				Outputs->SetValue(P2_Recoil, 0);
+				s_p2RecoilHigh = false;
+			}
+			else
+			{
+				if (s_gameid == "NM00021") // Cobra Arcade
+				{
+					u32 ammoCount = 0;
+
+					u32 romVersion = memRead32(0x590930);
+
+					if (romVersion == 0x3A643225) // CBR1
+					{
+						ammoCount = memRead32(0x59B098);
+					}
+					else // CBR2
+					{
+						ammoCount = memRead32(0x59AE98);
+					}
+
+					if (ammoCount < s_p1LastAmmo)
+					{
+						Outputs->SetValue(P1_Recoil, 1);
+						s_p1RecoilHigh = true;
+					}
+					s_p1LastAmmo = ammoCount;
+				}
+
+				if (s_gameid == "NM00003") // Vampire Night
+				{
+					u32 p1ammoCount = 0;
+					u32 p2ammoCount = 0;
+
+					p1ammoCount = memRead32(0x3CBBC4);
+					p2ammoCount = memRead32(0x3CBE78);
+
+
+					if (p1ammoCount < s_p1LastAmmo)
+					{
+						Outputs->SetValue(P1_Recoil, 1);
+						s_p1RecoilHigh = true;
+					}
+					s_p1LastAmmo = p1ammoCount;
+
+					if (p2ammoCount < s_p2LastAmmo)
+					{
+						Outputs->SetValue(P2_Recoil, 1);
+						s_p2RecoilHigh = true;
+					}
+					s_p2LastAmmo = p2ammoCount;
+				}
+			}
+		}
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(15));
+	}
+	Console.WriteLn("OUTPUTS: Recoil Thread stop");
 }
