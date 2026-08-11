@@ -1,26 +1,15 @@
-<p align="center">
-  <a href="https://ps2homebrew-arcade.github.io/pcsx2x6/">
-    <img src="./bin/resources/icons/AppIconLarge.png" alt="Logo" width="25%" height="auto">
-  </a>
-  <p align="center">
-    A fork of PCSX2 to emulate NAMCO System246 and System256 arcade units
-    
-  <br />
-  <img alt="GitHub Tag" src="https://img.shields.io/github/v/tag/Ps2homebrew-arcade/PCSX2x6?include_prereleases&sort=semver&style=for-the-badge&logo=GitHub&label=%20&color=black">
-   <img alt="GitHub Downloads (all assets, all releases)" src="https://img.shields.io/github/downloads/Ps2homebrew-arcade/PCSX2x6/total?style=for-the-badge&logo=github&label=%20"> <a href="https://discord.gg/ghpjzNX7pH"><img alt="Discord" src="https://img.shields.io/discord/1481674266029064235?style=for-the-badge&logo=discord&label=%20">
-   </a>
-   
-  
-  </p>
-  
-</p>
 
+## A fork of PCSX2x6 that includes support for Windows-style outputs
 
+The only difference from this and the main branch of pcsx2x6 is the addition of support for MameHooker (or OutputHooker) style outputs for the 4 lightgun games (Time Crisis 3&4, Vampire Night, and Cobra: The Arcade).  The outputs are P1_Recoil and P2_Recoil.  To enable, go into Settings->Controllers->JVS Controls and from the JVS Mode: System check the "Enable Outputs" box.  
+<br>
 
-## Get Started
-> Please refer to [our website](https://ps2homebrew-arcade.github.io/pcsx2x6/) for that
+Note that only Windows is supported as this release only uses the Windows-style pipes for output (it does not support Network-style outputs).  I don't plan to maintain this fork for long, at some point it is likely this capability will be added to the main pcsx2x6 application.
+<br>
 
-## Special Thanks to:
-- Tovarichtch, DiscoStarSlayer, Uyjulian, krHACKen, and many more for all your help
-- Berion for the new app icon
+## Get Started (with emulator itself)
+> Please refer to [pcsx2x6 website](https://ps2homebrew-arcade.github.io/pcsx2x6/) for that
+
+## Thanks to:
+- israpps, Tovarichtch, DiscoStarSlayer, Uyjulian, krHACKen, and many more for creation of pcsx2x6 as well as all the individuals who worked on pcsx2 over the years
 
