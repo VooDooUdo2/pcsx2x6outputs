@@ -195,6 +195,7 @@ namespace ACJV {
     bool IsOutputsEnabled();
 	
 	void threadMemoryOutputs();
+	void Shutdown();
 }
 
 
