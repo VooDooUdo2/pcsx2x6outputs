@@ -327,6 +327,7 @@ set(pcsx2DEV9Sources
 	DEV9/ACATAPI.cpp
 	DEV9/ACJV.cpp
 	DEV9/ACUART.cpp
+	DEV9/ACUART_GLUE.cpp
 	DEV9/ACCORE.cpp
 	)
 
@@ -838,11 +839,15 @@ set(pcsx2DebugToolsHeaders
 	DebugTools/BiosDebugData.h)
 
 set(pcsx2HostSources
+	Host/AudioRateController.cpp
+	Host/AudioRateResampler.cpp
 	Host/AudioStream.cpp
 	Host/CubebAudioStream.cpp
 	Host/SDLAudioStream.cpp)
 
 set(pcsx2HostHeaders
+	Host/AudioRateController.h
+	Host/AudioRateResampler.h
 	Host/AudioStream.h
 	Host/AudioStreamTypes.h)
 
