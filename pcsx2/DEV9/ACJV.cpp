@@ -14,6 +14,7 @@
 #include <string>
 #include <Outputs/Outputs.h>
 #ifdef _WIN32
+#define NOMINMAX
 #include <Outputs/WinOutputs.h>
 #endif
 
